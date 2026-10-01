@@ -171,6 +171,15 @@
 
   .flip-hint { font-size: .75rem; color: var(--fg2); text-align: center; }
 
+  .btn-undo {
+    background: none; border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 18px;
+    font-size: .8rem; font-weight: 600; color: var(--fg2);
+    cursor: pointer; font-family: 'Inter', sans-serif;
+    transition: border-color .2s, color .2s;
+  }
+  .btn-undo:hover { border-color: var(--accent); color: var(--accent); }
+
   .sound-btn {
     position: absolute; bottom: 14px; right: 16px;
     background: var(--border); border: none; border-radius: 50%;
@@ -311,6 +320,10 @@
     <div class="actions" id="answer-btns" style="display:none;">
       <button class="btn btn-learn" onclick="markLearn()">🔄 Review again</button>
       <button class="btn btn-know" onclick="markKnow()">✅ I know it</button>
+    </div>
+
+    <div id="undo-row" style="display:none;text-align:center;">
+      <button class="btn-undo" onclick="undoLast()">↩ Undo last</button>
     </div>
 
     <div class="actions" id="flip-btns">
@@ -663,6 +676,7 @@ const GIFS = {
 let deck = [], idx = 0, flipped = false;
 let known = new Set(), toLearn = new Set();
 let mode = 'all';
+let lastAction = null; // { word, wasKnown, wasLearn, idx }
 
 function loadState() {
   try {
@@ -789,14 +803,30 @@ function flipCard() {
 
 function markKnow() {
   const w = deck[idx][0];
+  lastAction = { word: w, wasKnown: known.has(w), wasLearn: toLearn.has(w), idx };
   known.add(w); toLearn.delete(w);
   saveState(); next();
+  document.getElementById('undo-row').style.display = '';
 }
 
 function markLearn() {
   const w = deck[idx][0];
+  lastAction = { word: w, wasKnown: known.has(w), wasLearn: toLearn.has(w), idx };
   toLearn.add(w);
   saveState(); next();
+  document.getElementById('undo-row').style.display = '';
+}
+
+function undoLast() {
+  if (!lastAction) return;
+  const { word, wasKnown, wasLearn, idx: prevIdx } = lastAction;
+  if (wasKnown) known.add(word); else known.delete(word);
+  if (wasLearn) toLearn.add(word); else toLearn.delete(word);
+  saveState();
+  idx = prevIdx;
+  lastAction = null;
+  document.getElementById('undo-row').style.display = 'none';
+  showCard();
 }
 
 function next() {
@@ -814,7 +844,7 @@ function next() {
 }
 
 function prev() {
-  if (idx > 0) { idx--; showCard(); }
+  if (idx > 0) { idx--; lastAction = null; document.getElementById('undo-row').style.display = 'none'; showCard(); }
 }
 
 function restart() {
