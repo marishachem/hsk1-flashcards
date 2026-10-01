@@ -98,7 +98,7 @@
   /* Flashcard */
   .card-wrap { perspective: 1000px; }
   .card {
-    width: 100%; min-height: 420px;
+    width: 100%; min-height: 480px;
     position: relative; cursor: pointer;
     transform-style: preserve-3d;
     transition: transform .55s cubic-bezier(.4,0,.2,1);
@@ -112,11 +112,13 @@
     border-radius: 20px;
     box-shadow: var(--card-shadow);
     display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 32px;
+    align-items: center; justify-content: flex-start;
+    padding: 48px 28px 28px;
+    overflow-y: auto;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
   }
+  .card-front { justify-content: center; }
   .card-back { transform: rotateY(180deg); }
 
   .card-hint {
@@ -182,6 +184,7 @@
   .autoplay-row {
     display: flex; align-items: center; justify-content: center; gap: 8px;
     font-size: .78rem; color: var(--fg2);
+    margin-bottom: 12px;
   }
   .toggle {
     width: 36px; height: 20px; background: var(--border); border-radius: 999px;
@@ -634,7 +637,7 @@ const GIFS = {
   "些":"https://lingust.ru/images/cn/lesson24/8xie.gif",
   "写":"https://lingust.ru/images/cn/lesson14/gif/xie.gif",
   "谢谢":"https://lingust.ru/images/cn/lesson8/gif/xie.gif",
-  "星期":"https://lingust.ru/images/cn/lesson20/17xing.gif",
+  "星期":["https://lingust.ru/images/cn/lesson20/17xing.gif","https://lingust.ru/images/cn/lesson20/17qi.gif"],
   "学生":"https://lingust.ru/images/cn/lesson9/gif/xue.gif",
   "学习":"https://lingust.ru/images/cn/lesson9/gif/xue.gif",
   "学校":"https://lingust.ru/images/cn/lesson9/gif/xue.gif",
@@ -854,8 +857,9 @@ document.addEventListener('keydown', e => {
 
 const WC_BASE = 'https://dictionary.writtenchinese.com/giffile.action?&localfile=true&fileName=';
 function getGifUrls(word) {
-  if (GIFS[word]) return [GIFS[word]];
-  // For words not in lingust.ru map: generate writtenchinese.com URL per character
+  const g = GIFS[word];
+  if (Array.isArray(g)) return g;
+  if (g) return [g];
   return [...word].map(ch => WC_BASE + encodeURIComponent(ch) + '.gif');
 }
 
