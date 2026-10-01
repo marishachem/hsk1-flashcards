@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HSK 1 Flashcards</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: centered card with progress bar and controls */
+  :root {
+    --bg: #f7f4ef;
+    --bg2: #ffffff;
+    --fg: #1a1a2e;
+    --fg2: #6b7280;
+    --accent: #c0392b;
+    --accent2: #e74c3c;
+    --gold: #f39c12;
+    --green: #27ae60;
+    --border: #e5e0d8;
+    --card-shadow: 0 8px 40px rgba(0,0,0,0.12);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12111a; --bg2: #1e1c2e; --fg: #f0eee8;
+      --fg2: #9ca3af; --border: #2e2b42;
+      --card-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12111a; --bg2: #1e1c2e; --fg: #f0eee8;
+    --fg2: #9ca3af; --border: #2e2b42;
+    --card-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100%;
+    padding-inline: 16px;
+    padding-block: 24px;
+  }
+
+  .app { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+  /* Header */
+  .header { text-align: center; }
+  .header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; }
+  .header h1 span { color: var(--accent); }
+  .subtitle { font-size: .85rem; color: var(--fg2); margin-top: 4px; }
+
+  /* Mode tabs */
+  .modes {
+    display: flex; gap: 6px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 5px;
+  }
+  .mode-btn {
+    flex: 1; padding: 7px; border: none; border-radius: 8px;
+    font-size: .8rem; font-weight: 600; cursor: pointer;
+    background: transparent; color: var(--fg2);
+    transition: background .2s, color .2s;
+    font-family: 'Inter', sans-serif;
+  }
+  .mode-btn.active { background: var(--accent); color: #fff; }
+
+  /* Progress */
+  .progress-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: .8rem; color: var(--fg2);
+  }
+  .progress-bar {
+    flex: 1; height: 6px; background: var(--border); border-radius: 999px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--accent); border-radius: 999px;
+    transition: width .4s ease;
+  }
+
+  /* Score row */
+  .score-row {
+    display: flex; gap: 10px;
+  }
+  .score-card {
+    flex: 1; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px; text-align: center;
+  }
+  .score-val { font-size: 1.3rem; font-weight: 700; }
+  .score-label { font-size: .7rem; color: var(--fg2); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .score-know .score-val { color: var(--green); }
+  .score-learn .score-val { color: var(--accent); }
+  .score-left .score-val { color: var(--gold); }
+
+  /* Flashcard */
+  .card-wrap { perspective: 1000px; }
+  .card {
+    width: 100%; min-height: 320px;
+    position: relative; cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform .55s cubic-bezier(.4,0,.2,1);
+  }
+  .card.flipped { transform: rotateY(180deg); }
+
+  .card-face {
+    position: absolute; inset: 0;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: var(--card-shadow);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .card-back { transform: rotateY(180deg); }
+
+  .card-hint {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    font-size: .72rem; color: var(--fg2); letter-spacing: .08em;
+    text-transform: uppercase; font-weight: 600; white-space: nowrap;
+  }
+
+  .card-tag {
+    position: absolute; top: 14px; right: 16px;
+    font-size: .7rem; font-weight: 700; padding: 2px 8px;
+    border-radius: 999px; background: var(--border); color: var(--fg2);
+  }
+
+  .chinese { font-family: 'Noto Sans SC', sans-serif; font-size: 5rem; font-weight: 700; line-height: 1; color: var(--fg); }
+  .pinyin { font-size: 1.3rem; color: var(--accent); margin-top: 10px; font-weight: 500; }
+  .english { font-size: 1.25rem; font-weight: 600; color: var(--fg); text-align: center; }
+  .english-sub { font-size: .9rem; color: var(--fg2); margin-top: 6px; text-align: center; }
+
+  /* Buttons */
+  .actions { display: flex; gap: 10px; }
+  .btn {
+    flex: 1; padding: 14px; border: none; border-radius: 12px;
+    font-size: .9rem; font-weight: 700; cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: transform .15s, opacity .15s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-know { background: var(--green); color: #fff; }
+  .btn-learn { background: var(--accent); color: #fff; }
+  .btn-skip {
+    flex: 0 0 auto; padding: 14px 18px;
+    background: var(--bg2); border: 1px solid var(--border);
+    color: var(--fg2);
+  }
+
+  /* Nav */
+  .nav { display: flex; gap: 8px; align-items: center; justify-content: center; }
+  .nav-btn {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 16px;
+    font-size: .82rem; font-weight: 600; color: var(--fg);
+    cursor: pointer; font-family: 'Inter', sans-serif;
+    transition: border-color .2s;
+  }
+  .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn:disabled { opacity: .35; cursor: default; }
+
+  .flip-hint { font-size: .75rem; color: var(--fg2); text-align: center; }
+
+  /* List mode */
+  .word-list { display: flex; flex-direction: column; gap: 6px; }
+  .word-row {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px;
+    transition: border-color .2s;
+  }
+  .word-row:hover { border-color: var(--accent); }
+  .word-row.known { border-left: 3px solid var(--green); }
+  .word-row.tolearn { border-left: 3px solid var(--accent); }
+  .w-char { font-family: 'Noto Sans SC', sans-serif; font-size: 1.5rem; font-weight: 700; min-width: 48px; }
+  .w-pin { font-size: .85rem; color: var(--accent); font-weight: 500; min-width: 90px; }
+  .w-en { font-size: .85rem; color: var(--fg2); flex: 1; }
+  .w-badge {
+    font-size: .65rem; font-weight: 700; padding: 2px 7px;
+    border-radius: 999px; flex-shrink: 0;
+  }
+  .w-badge.known { background: #d1fae5; color: #065f46; }
+  .w-badge.tolearn { background: #fee2e2; color: #991b1b; }
+
+  /* Search in list */
+  .list-search {
+    padding: 9px 14px; border: 1px solid var(--border);
+    border-radius: 10px; font-size: .88rem;
+    background: var(--bg2); color: var(--fg);
+    font-family: 'Inter', sans-serif; width: 100%;
+    outline: none;
+  }
+  .list-search:focus { border-color: var(--accent); }
+
+  /* Finish screen */
+  .finish { text-align: center; padding: 40px 20px; }
+  .finish-emoji { font-size: 4rem; }
+  .finish h2 { font-size: 1.5rem; font-weight: 700; margin: 12px 0 6px; }
+  .finish p { color: var(--fg2); margin-bottom: 20px; }
+  .btn-restart {
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 12px; padding: 12px 28px;
+    font-size: .95rem; font-weight: 700; cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card { transition: none; }
+  }
+</style>
+
+<div class="app">
+  <div class="header">
+    <h1>HSK 1 <span>闪卡</span> Flashcards</h1>
+    <div class="subtitle">150 words · Tap card to flip · Mark what you know</div>
+  </div>
+
+  <div class="modes">
+    <button class="mode-btn active" onclick="setMode('all')">All words</button>
+    <button class="mode-btn" onclick="setMode('learn')">Study again</button>
+    <button class="mode-btn" onclick="setMode('list')">Word list</button>
+  </div>
+
+  <div class="score-row">
+    <div class="score-card score-know"><div class="score-val" id="s-know">0</div><div class="score-label">✅ Know</div></div>
+    <div class="score-card score-learn"><div class="score-val" id="s-learn">0</div><div class="score-label">🔄 Review</div></div>
+    <div class="score-card score-left"><div class="score-val" id="s-left">150</div><div class="score-label">📚 Left</div></div>
+  </div>
+
+  <!-- Card mode -->
+  <div id="card-mode">
+    <div class="progress-row">
+      <span id="prog-text">1 / 150</span>
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+    </div>
+
+    <div class="card-wrap" style="margin-block:4px;">
+      <div class="card" id="card" onclick="flipCard()">
+        <div class="card-face card-front">
+          <div class="card-hint">TAP TO REVEAL</div>
+          <div class="card-tag" id="card-tag"></div>
+          <div class="chinese" id="f-char"></div>
+          <div class="pinyin" id="f-pin"></div>
+        </div>
+        <div class="card-face card-back">
+          <div class="card-hint">MEANING</div>
+          <div class="chinese" id="b-char" style="font-size:3rem;margin-bottom:8px;"></div>
+          <div class="pinyin" id="b-pin" style="font-size:1rem;margin-bottom:14px;"></div>
+          <div class="english" id="b-en"></div>
+          <div id="b-sentence" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);width:100%;text-align:center;">
+            <div id="b-sent-zh" style="font-family:'Noto Sans SC',sans-serif;font-size:1rem;font-weight:700;margin-bottom:4px;"></div>
+            <div id="b-sent-pin" style="font-size:.8rem;color:var(--accent);margin-bottom:4px;"></div>
+            <div id="b-sent-en" style="font-size:.8rem;color:var(--fg2);font-style:italic;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-hint" id="flip-hint">Tap the card to see the meaning</div>
+
+    <div class="actions" id="answer-btns" style="display:none;">
+      <button class="btn btn-learn" onclick="markLearn()">🔄 Review again</button>
+      <button class="btn btn-know" onclick="markKnow()">✅ I know it</button>
+    </div>
+
+    <div class="actions" id="flip-btns">
+      <button class="btn btn-skip" onclick="prev()" id="prev-btn">←</button>
+      <button class="btn" onclick="flipCard()" style="background:var(--accent);color:#fff;">Flip</button>
+      <button class="btn btn-skip" onclick="next()" id="next-btn">→</button>
+    </div>
+
+    <div id="finish-screen" class="finish" style="display:none;">
+      <div class="finish-emoji">🎉</div>
+      <h2>Deck complete!</h2>
+      <p id="finish-msg"></p>
+      <button class="btn-restart" onclick="restart()">Start over</button>
+    </div>
+  </div>
+
+  <!-- List mode -->
+  <div id="list-mode" style="display:none;">
+    <input class="list-search" id="list-search" placeholder="Search characters, pinyin or English…" oninput="renderList()">
+    <div class="word-list" id="word-list"></div>
+  </div>
+</div>
+
+<script>
+const WORDS = [
+  ["爱","ài","to love; affection"],["八","bā","eight"],["爸爸","bà ba","father"],
+  ["杯子","bēi zi","cup; glass"],["北京","běi jīng","Beijing"],["本","běn","classifier for books"],
+  ["不客气","bú kè qi","you're welcome"],["不","bù","not; no"],["菜","cài","dish; vegetables"],
+  ["茶","chá","tea"],["吃","chī","to eat"],["出租车","chū zū chē","taxi"],
+  ["打电话","dǎ diàn huà","to make a phone call"],["大","dà","big; large"],["的","de","structural particle"],
+  ["点","diǎn","o'clock; a bit"],["电脑","diàn nǎo","computer"],["电视","diàn shì","television"],
+  ["电影","diàn yǐng","movie; film"],["东西","dōng xi","thing; stuff"],["都","dōu","all; both"],
+  ["读","dú","to read; to study"],["对不起","duì bu qǐ","I'm sorry"],["多","duō","many; much"],
+  ["多少","duō shǎo","how much; how many"],["儿子","ér zi","son"],["二","èr","two"],
+  ["饭店","fàn diàn","restaurant; hotel"],["飞机","fēi jī","airplane"],["分钟","fēn zhōng","minute"],
+  ["高兴","gāo xìng","happy; glad"],["个","gè","classifier for objects"],["工作","gōng zuò","job; work"],
+  ["狗","gǒu","dog"],["汉语","hàn yǔ","Chinese language"],["好","hǎo","good; well"],
+  ["号","hào","day of month; number"],["喝","hē","to drink"],["和","hé","and; with"],
+  ["很","hěn","very; quite"],["后面","hòu miàn","back; behind"],["回","huí","to return"],
+  ["会","huì","can; will"],["几","jǐ","how many; several"],["家","jiā","home; family"],
+  ["叫","jiào","to call; to be called"],["今天","jīn tiān","today"],["九","jiǔ","nine"],
+  ["开","kāi","to open; to start"],["看","kàn","to look at"],["看见","kàn jiàn","to see"],
+  ["块","kuài","yuan (currency)"],["来","lái","to come"],["老师","lǎo shī","teacher"],
+  ["了","le","completed action marker"],["冷","lěng","cold"],["里","lǐ","inside"],
+  ["六","liù","six"],["吗","ma","question particle"],["妈妈","mā ma","mom; mother"],
+  ["买","mǎi","to buy"],["猫","māo","cat"],["没关系","méi guān xi","it doesn't matter"],
+  ["没有","méi yǒu","haven't; doesn't exist"],["米饭","mǐ fàn","cooked rice"],["名字","míng zi","name"],
+  ["明天","míng tiān","tomorrow"],["哪","nǎ","which"],["哪儿","nǎ er","where"],
+  ["那","nà","that; those"],["呢","ne","question particle"],["能","néng","can; able to"],
+  ["你","nǐ","you"],["年","nián","year"],["女儿","nǚ ér","daughter"],
+  ["朋友","péng you","friend"],["漂亮","piào liang","pretty; beautiful"],["苹果","píng guǒ","apple"],
+  ["七","qī","seven"],["前面","qián miàn","ahead; in front"],["钱","qián","money"],
+  ["请","qǐng","please; to invite"],["去","qù","to go"],["热","rè","hot; warm"],
+  ["人","rén","person; people"],["认识","rèn shi","to know; to recognize"],["三","sān","three"],
+  ["商店","shāng diàn","store; shop"],["上","shàng","on; up"],["上午","shàng wǔ","morning"],
+  ["少","shǎo","few; little"],["谁","shéi","who"],["什么","shén me","what"],
+  ["十","shí","ten"],["时候","shí hou","time; moment"],["是","shì","to be; yes"],
+  ["书","shū","book"],["水","shuǐ","water"],["水果","shuǐ guǒ","fruit"],
+  ["睡觉","shuì jiào","to sleep"],["说","shuō","to speak; to say"],["四","sì","four"],
+  ["岁","suì","year (of age)"],["他","tā","he; him"],["她","tā","she; her"],
+  ["太","tài","too; very"],["天气","tiān qì","weather"],["听","tīng","to listen"],
+  ["同学","tóng xué","classmate"],["喂","wèi","hello (on phone)"],["我","wǒ","I; me"],
+  ["我们","wǒ men","we; us"],["五","wǔ","five"],["喜欢","xǐ huan","to like"],
+  ["下","xià","down; below"],["下午","xià wǔ","afternoon"],["下雨","xià yǔ","to rain"],
+  ["先生","xiān sheng","mister; husband"],["现在","xiàn zài","now; present"],["想","xiǎng","to think; to wish"],
+  ["小","xiǎo","small; young"],["小姐","xiǎo jie","young lady; miss"],["些","xiē","some; few"],
+  ["写","xiě","to write"],["谢谢","xiè xie","thanks"],["星期","xīng qī","week"],
+  ["学生","xué sheng","student"],["学习","xué xí","to learn; to study"],["学校","xué xiào","school"],
+  ["一","yī","one"],["一点儿","yī diǎn er","a little bit"],["医生","yī shēng","doctor"],
+  ["医院","yī yuàn","hospital"],["衣服","yī fu","clothes"],["椅子","yǐ zi","chair"],
+  ["有","yǒu","to have; there is"],["月","yuè","month; moon"],["再见","zài jiàn","goodbye"],
+  ["在","zài","at; in; to exist"],["怎么","zěn me","how; why"],["怎么样","zěn me yàng","how about"],
+  ["这","zhè","this; these"],["中国","zhōng guó","China"],["中午","zhōng wǔ","noon"],
+  ["住","zhù","to live; to dwell"],["桌子","zhuō zi","table; desk"],["字","zì","character; letter"],
+  ["昨天","zuó tiān","yesterday"],["做","zuò","to do; to make"],["坐","zuò","to sit"],
+];
+
+const SENTENCES = {
+  "爱":["我爱我的妈妈。","Wǒ ài wǒ de māma.","I love my mother."],
+  "八":["我有八本书。","Wǒ yǒu bā běn shū.","I have eight books."],
+  "爸爸":["我爸爸是老师。","Wǒ bàba shì lǎoshī.","My father is a teacher."],
+  "杯子":["这个杯子是我的。","Zhège bēizi shì wǒ de.","This cup is mine."],
+  "北京":["我在北京工作。","Wǒ zài Běijīng gōngzuò.","I work in Beijing."],
+  "本":["我买了一本书。","Wǒ mǎi le yī běn shū.","I bought a book."],
+  "不客气":["谢谢！不客气！","Xièxie! Bú kèqi!","Thank you! You're welcome!"],
+  "不":["我不喝茶。","Wǒ bù hē chá.","I don't drink tea."],
+  "菜":["这个菜很好吃。","Zhège cài hěn hǎo chī.","This dish is delicious."],
+  "茶":["你喝茶吗？","Nǐ hē chá ma?","Do you drink tea?"],
+  "吃":["我们去吃饭吧。","Wǒmen qù chī fàn ba.","Let's go eat."],
+  "出租车":["我坐出租车去学校。","Wǒ zuò chūzūchē qù xuéxiào.","I take a taxi to school."],
+  "打电话":["我给妈妈打电话。","Wǒ gěi māma dǎ diànhuà.","I call my mother."],
+  "大":["我家很大。","Wǒ jiā hěn dà.","My home is very big."],
+  "的":["这是我的书。","Zhè shì wǒ de shū.","This is my book."],
+  "点":["现在三点了。","Xiànzài sān diǎn le.","It's three o'clock now."],
+  "电脑":["我有一台电脑。","Wǒ yǒu yī tái diànnǎo.","I have a computer."],
+  "电视":["我喜欢看电视。","Wǒ xǐhuan kàn diànshì.","I like watching TV."],
+  "电影":["这个电影很好看。","Zhège diànyǐng hěn hǎokàn.","This movie is great."],
+  "东西":["你买什么东西？","Nǐ mǎi shénme dōngxi?","What are you buying?"],
+  "都":["我们都是学生。","Wǒmen dōu shì xuésheng.","We are all students."],
+  "读":["他在读书。","Tā zài dú shū.","He is reading a book."],
+  "对不起":["对不起，我来晚了。","Duìbuqǐ, wǒ lái wǎn le.","Sorry, I'm late."],
+  "多":["这里人很多。","Zhèlǐ rén hěn duō.","There are many people here."],
+  "多少":["这个多少钱？","Zhège duōshǎo qián?","How much does this cost?"],
+  "儿子":["他有一个儿子。","Tā yǒu yīgè érzi.","He has a son."],
+  "二":["我有两个朋友。","Wǒ yǒu liǎng gè péngyou.","I have two friends."],
+  "饭店":["我们去饭店吃饭。","Wǒmen qù fàndiàn chī fàn.","We go to the restaurant to eat."],
+  "飞机":["我坐飞机去北京。","Wǒ zuò fēijī qù Běijīng.","I fly to Beijing."],
+  "分钟":["请等五分钟。","Qǐng děng wǔ fēnzhōng.","Please wait five minutes."],
+  "高兴":["见到你我很高兴。","Jiàn dào nǐ wǒ hěn gāoxìng.","I'm happy to meet you."],
+  "个":["我有一个苹果。","Wǒ yǒu yīgè píngguǒ.","I have one apple."],
+  "工作":["你的工作怎么样？","Nǐ de gōngzuò zěnmeyàng?","How is your work?"],
+  "狗":["我家有一只狗。","Wǒ jiā yǒu yīzhī gǒu.","My family has a dog."],
+  "汉语":["我在学习汉语。","Wǒ zài xuéxí Hànyǔ.","I am learning Chinese."],
+  "好":["你好！","Nǐ hǎo!","Hello!"],
+  "号":["今天几号？","Jīntiān jǐ hào?","What date is today?"],
+  "喝":["你喝水吗？","Nǐ hē shuǐ ma?","Do you drink water?"],
+  "和":["我和你是朋友。","Wǒ hé nǐ shì péngyou.","You and I are friends."],
+  "很":["这里很漂亮。","Zhèlǐ hěn piàoliang.","This place is very beautiful."],
+  "后面":["学校在后面。","Xuéxiào zài hòumiàn.","The school is in the back."],
+  "回":["我要回家了。","Wǒ yào huí jiā le.","I'm going home."],
+  "会":["你会说汉语吗？","Nǐ huì shuō Hànyǔ ma?","Can you speak Chinese?"],
+  "几":["你有几本书？","Nǐ yǒu jǐ běn shū?","How many books do you have?"],
+  "家":["我家在北京。","Wǒ jiā zài Běijīng.","My home is in Beijing."],
+  "叫":["你叫什么名字？","Nǐ jiào shénme míngzi?","What is your name?"],
+  "今天":["今天天气很好。","Jīntiān tiānqì hěn hǎo.","The weather is good today."],
+  "九":["我九岁。","Wǒ jiǔ suì.","I am nine years old."],
+  "开":["请开门。","Qǐng kāi mén.","Please open the door."],
+  "看":["我看电视。","Wǒ kàn diànshì.","I watch TV."],
+  "看见":["我看见一只猫。","Wǒ kàn jiàn yīzhī māo.","I see a cat."],
+  "块":["这个苹果两块钱。","Zhège píngguǒ liǎng kuài qián.","This apple costs two yuan."],
+  "来":["他来了！","Tā lái le!","He's here!"],
+  "老师":["我的老师很好。","Wǒ de lǎoshī hěn hǎo.","My teacher is very good."],
+  "了":["我吃了。","Wǒ chī le.","I have eaten."],
+  "冷":["今天很冷。","Jīntiān hěn lěng.","It's very cold today."],
+  "里":["书在包里。","Shū zài bāo lǐ.","The book is in the bag."],
+  "六":["我六点起床。","Wǒ liù diǎn qǐchuáng.","I get up at six o'clock."],
+  "吗":["你是学生吗？","Nǐ shì xuésheng ma?","Are you a student?"],
+  "妈妈":["我妈妈是医生。","Wǒ māma shì yīshēng.","My mother is a doctor."],
+  "买":["我想买一本书。","Wǒ xiǎng mǎi yī běn shū.","I want to buy a book."],
+  "猫":["我家有一只猫。","Wǒ jiā yǒu yīzhī māo.","My family has a cat."],
+  "没关系":["没关系，不要紧。","Méi guānxi, bùyào jǐn.","It's okay, don't worry."],
+  "没有":["我没有钱。","Wǒ méiyǒu qián.","I don't have money."],
+  "米饭":["我喜欢吃米饭。","Wǒ xǐhuan chī mǐfàn.","I like eating rice."],
+  "名字":["你的名字叫什么？","Nǐ de míngzi jiào shénme?","What is your name?"],
+  "明天":["明天见！","Míngtiān jiàn!","See you tomorrow!"],
+  "哪":["你是哪国人？","Nǐ shì nǎ guó rén?","Which country are you from?"],
+  "哪儿":["你去哪儿？","Nǐ qù nǎr?","Where are you going?"],
+  "那":["那是我的书。","Nà shì wǒ de shū.","That is my book."],
+  "呢":["你呢？","Nǐ ne?","And you?"],
+  "能":["你能帮我吗？","Nǐ néng bāng wǒ ma?","Can you help me?"],
+  "你":["你好！","Nǐ hǎo!","Hello!"],
+  "年":["今年是哪年？","Jīnnián shì nǎ nián?","What year is this year?"],
+  "女儿":["她有一个女儿。","Tā yǒu yīgè nǚ'ér.","She has a daughter."],
+  "朋友":["他是我的好朋友。","Tā shì wǒ de hǎo péngyou.","He is my good friend."],
+  "漂亮":["她很漂亮。","Tā hěn piàoliang.","She is very beautiful."],
+  "苹果":["我喜欢吃苹果。","Wǒ xǐhuan chī píngguǒ.","I like eating apples."],
+  "七":["我有七本书。","Wǒ yǒu qī běn shū.","I have seven books."],
+  "前面":["商店在前面。","Shāngdiàn zài qiánmiàn.","The shop is ahead."],
+  "钱":["你有多少钱？","Nǐ yǒu duōshǎo qián?","How much money do you have?"],
+  "请":["请坐！","Qǐng zuò!","Please sit down!"],
+  "去":["我去学校。","Wǒ qù xuéxiào.","I go to school."],
+  "热":["今天很热。","Jīntiān hěn rè.","It's very hot today."],
+  "人":["这里有很多人。","Zhèlǐ yǒu hěn duō rén.","There are many people here."],
+  "认识":["我认识他。","Wǒ rènshi tā.","I know him."],
+  "三":["我有三个朋友。","Wǒ yǒu sān gè péngyou.","I have three friends."],
+  "商店":["商店里有很多东西。","Shāngdiàn lǐ yǒu hěn duō dōngxi.","There are many things in the store."],
+  "上":["书在桌子上。","Shū zài zhuōzi shàng.","The book is on the table."],
+  "上午":["上午我有课。","Shàngwǔ wǒ yǒu kè.","I have class in the morning."],
+  "少":["这里人很少。","Zhèlǐ rén hěn shǎo.","There are few people here."],
+  "谁":["他是谁？","Tā shì shéi?","Who is he?"],
+  "什么":["你吃什么？","Nǐ chī shénme?","What do you eat?"],
+  "十":["我有十本书。","Wǒ yǒu shí běn shū.","I have ten books."],
+  "时候":["你什么时候来？","Nǐ shénme shíhou lái?","When are you coming?"],
+  "是":["我是学生。","Wǒ shì xuésheng.","I am a student."],
+  "书":["这本书很好看。","Zhè běn shū hěn hǎokàn.","This book is very good."],
+  "水":["我想喝水。","Wǒ xiǎng hē shuǐ.","I want to drink water."],
+  "水果":["你喜欢吃什么水果？","Nǐ xǐhuan chī shénme shuǐguǒ?","What fruit do you like?"],
+  "睡觉":["我十点睡觉。","Wǒ shí diǎn shuìjiào.","I sleep at ten o'clock."],
+  "说":["他说汉语很好。","Tā shuō Hànyǔ hěn hǎo.","He speaks Chinese very well."],
+  "四":["我有四个苹果。","Wǒ yǒu sì gè píngguǒ.","I have four apples."],
+  "岁":["你几岁？","Nǐ jǐ suì?","How old are you?"],
+  "他":["他是我的朋友。","Tā shì wǒ de péngyou.","He is my friend."],
+  "她":["她是我的老师。","Tā shì wǒ de lǎoshī.","She is my teacher."],
+  "太":["这个太贵了。","Zhège tài guì le.","This is too expensive."],
+  "天气":["今天天气怎么样？","Jīntiān tiānqì zěnmeyàng?","How is the weather today?"],
+  "听":["我喜欢听音乐。","Wǒ xǐhuan tīng yīnyuè.","I like listening to music."],
+  "同学":["他是我的同学。","Tā shì wǒ de tóngxué.","He is my classmate."],
+  "喂":["喂，你好！","Wèi, nǐ hǎo!","Hello! (on the phone)"],
+  "我":["我是中国人。","Wǒ shì Zhōngguórén.","I am Chinese."],
+  "我们":["我们是朋友。","Wǒmen shì péngyou.","We are friends."],
+  "五":["我有五本书。","Wǒ yǒu wǔ běn shū.","I have five books."],
+  "喜欢":["我喜欢学习汉语。","Wǒ xǐhuan xuéxí Hànyǔ.","I like studying Chinese."],
+  "下":["猫在桌子下。","Māo zài zhuōzi xià.","The cat is under the table."],
+  "下午":["下午我去商店。","Xiàwǔ wǒ qù shāngdiàn.","I go to the store in the afternoon."],
+  "下雨":["今天下雨了。","Jīntiān xià yǔ le.","It's raining today."],
+  "先生":["王先生，你好！","Wáng xiānsheng, nǐ hǎo!","Hello, Mr. Wang!"],
+  "现在":["现在几点？","Xiànzài jǐ diǎn?","What time is it now?"],
+  "想":["我想喝茶。","Wǒ xiǎng hē chá.","I want to drink tea."],
+  "小":["这只猫很小。","Zhè zhī māo hěn xiǎo.","This cat is very small."],
+  "小姐":["请问，小姐。","Qǐngwèn, xiǎojie.","Excuse me, miss."],
+  "些":["我想买一些苹果。","Wǒ xiǎng mǎi yīxiē píngguǒ.","I want to buy some apples."],
+  "写":["请写你的名字。","Qǐng xiě nǐ de míngzi.","Please write your name."],
+  "谢谢":["谢谢你的帮助！","Xièxie nǐ de bāngzhù!","Thank you for your help!"],
+  "星期":["这个星期我很忙。","Zhège xīngqī wǒ hěn máng.","I'm very busy this week."],
+  "学生":["我是一名学生。","Wǒ shì yī míng xuésheng.","I am a student."],
+  "学习":["我每天学习汉语。","Wǒ měitiān xuéxí Hànyǔ.","I study Chinese every day."],
+  "学校":["我的学校很大。","Wǒ de xuéxiào hěn dà.","My school is very big."],
+  "一":["我有一个苹果。","Wǒ yǒu yīgè píngguǒ.","I have one apple."],
+  "一点儿":["请等一点儿。","Qǐng děng yīdiǎnr.","Please wait a little."],
+  "医生":["我爸爸是医生。","Wǒ bàba shì yīshēng.","My father is a doctor."],
+  "医院":["医院在哪儿？","Yīyuàn zài nǎr?","Where is the hospital?"],
+  "衣服":["这件衣服很漂亮。","Zhè jiàn yīfu hěn piàoliang.","This clothing is very beautiful."],
+  "椅子":["请坐在椅子上。","Qǐng zuò zài yǐzi shàng.","Please sit on the chair."],
+  "有":["我有一只猫。","Wǒ yǒu yīzhī māo.","I have a cat."],
+  "月":["我三月去北京。","Wǒ sān yuè qù Běijīng.","I go to Beijing in March."],
+  "再见":["明天见，再见！","Míngtiān jiàn, zàijiàn!","See you tomorrow, goodbye!"],
+  "在":["我在学校。","Wǒ zài xuéxiào.","I am at school."],
+  "怎么":["你怎么去学校？","Nǐ zěnme qù xuéxiào?","How do you go to school?"],
+  "怎么样":["你的汉语怎么样？","Nǐ de Hànyǔ zěnmeyàng?","How is your Chinese?"],
+  "这":["这是什么？","Zhè shì shénme?","What is this?"],
+  "中国":["我在中国学习。","Wǒ zài Zhōngguó xuéxí.","I study in China."],
+  "中午":["中午我们吃米饭。","Zhōngwǔ wǒmen chī mǐfàn.","We eat rice at noon."],
+  "住":["我住在北京。","Wǒ zhù zài Běijīng.","I live in Beijing."],
+  "桌子":["书在桌子上。","Shū zài zhuōzi shàng.","The book is on the table."],
+  "字":["这个字怎么写？","Zhège zì zěnme xiě?","How do you write this character?"],
+  "昨天":["昨天我去了商店。","Zuótiān wǒ qù le shāngdiàn.","Yesterday I went to the store."],
+  "做":["你在做什么？","Nǐ zài zuò shénme?","What are you doing?"],
+  "坐":["请坐！","Qǐng zuò!","Please sit down!"],
+};
+
+let deck = [], idx = 0, flipped = false;
+let known = new Set(), toLearn = new Set();
+let mode = 'all';
+
+function loadState() {
+  try {
+    const k = localStorage.getItem('hsk1-known');
+    const l = localStorage.getItem('hsk1-learn');
+    if (k) known = new Set(JSON.parse(k));
+    if (l) toLearn = new Set(JSON.parse(l));
+  } catch(e) {}
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('hsk1-known', JSON.stringify([...known]));
+    localStorage.setItem('hsk1-learn', JSON.stringify([...toLearn]));
+  } catch(e) {}
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildDeck() {
+  if (mode === 'learn') {
+    deck = shuffle(WORDS.filter(w => toLearn.has(w[0])));
+  } else {
+    deck = shuffle([...WORDS]);
+  }
+  idx = 0;
+}
+
+function setMode(m) {
+  document.querySelectorAll('.mode-btn').forEach((b,i) => b.classList.toggle('active', ['all','learn','list'][i] === m));
+  mode = m;
+  document.getElementById('card-mode').style.display = m === 'list' ? 'none' : '';
+  document.getElementById('list-mode').style.display = m === 'list' ? '' : 'none';
+  if (m === 'list') { renderList(); return; }
+  buildDeck();
+  showCard();
+}
+
+function showCard() {
+  const fin = document.getElementById('finish-screen');
+  const wrap = document.querySelector('.card-wrap');
+  const actions = document.getElementById('answer-btns');
+  const flipBtns = document.getElementById('flip-btns');
+  const hint = document.getElementById('flip-hint');
+
+  if (!deck.length) {
+    fin.style.display = '';
+    wrap.style.display = 'none';
+    actions.style.display = 'none';
+    flipBtns.style.display = 'none';
+    hint.style.display = 'none';
+    document.getElementById('finish-msg').textContent = mode === 'learn'
+      ? 'No words marked for review yet! Study some cards first.'
+      : `You know ${known.size} of 150 words. Keep going!`;
+    return;
+  }
+
+  fin.style.display = 'none';
+  wrap.style.display = '';
+  flipBtns.style.display = '';
+  actions.style.display = 'none';
+  hint.style.display = '';
+
+  const w = deck[idx];
+  document.getElementById('f-char').textContent = w[0];
+  document.getElementById('f-pin').textContent = w[1];
+  document.getElementById('b-char').textContent = w[0];
+  document.getElementById('b-pin').textContent = w[1];
+  document.getElementById('b-en').textContent = w[2];
+  const s = SENTENCES[w[0]];
+  if (s) {
+    document.getElementById('b-sent-zh').textContent = s[0];
+    document.getElementById('b-sent-pin').textContent = s[1];
+    document.getElementById('b-sent-en').textContent = s[2];
+    document.getElementById('b-sentence').style.display = '';
+  } else {
+    document.getElementById('b-sentence').style.display = 'none';
+  }
+
+  const tag = known.has(w[0]) ? '✅' : toLearn.has(w[0]) ? '🔄' : '';
+  document.getElementById('card-tag').textContent = tag;
+
+  document.getElementById('prog-text').textContent = `${idx+1} / ${deck.length}`;
+  document.getElementById('prog-fill').style.width = `${((idx+1)/deck.length)*100}%`;
+
+  const card = document.getElementById('card');
+  card.classList.remove('flipped');
+  flipped = false;
+  updateScores();
+}
+
+function flipCard() {
+  const card = document.getElementById('card');
+  flipped = !flipped;
+  card.classList.toggle('flipped', flipped);
+  document.getElementById('answer-btns').style.display = flipped ? '' : 'none';
+  document.getElementById('flip-btns').style.display = flipped ? 'none' : '';
+  document.getElementById('flip-hint').style.display = flipped ? 'none' : '';
+}
+
+function markKnow() {
+  const w = deck[idx][0];
+  known.add(w); toLearn.delete(w);
+  saveState(); next();
+}
+
+function markLearn() {
+  const w = deck[idx][0];
+  toLearn.add(w);
+  saveState(); next();
+}
+
+function next() {
+  if (idx < deck.length - 1) { idx++; showCard(); }
+  else {
+    document.getElementById('finish-screen').style.display = '';
+    document.querySelector('.card-wrap').style.display = 'none';
+    document.getElementById('answer-btns').style.display = 'none';
+    document.getElementById('flip-btns').style.display = 'none';
+    document.getElementById('flip-hint').style.display = 'none';
+    document.getElementById('finish-msg').textContent =
+      `You know ${known.size} / 150 words. ${known.size >= 150 ? '🏆 Perfect score!' : 'Keep practicing!'}`;
+  }
+  updateScores();
+}
+
+function prev() {
+  if (idx > 0) { idx--; showCard(); }
+}
+
+function restart() {
+  buildDeck(); showCard();
+}
+
+function updateScores() {
+  document.getElementById('s-know').textContent = known.size;
+  document.getElementById('s-learn').textContent = toLearn.size;
+  document.getElementById('s-left').textContent = 150 - known.size - toLearn.size;
+}
+
+function renderList() {
+  const q = document.getElementById('list-search').value.toLowerCase();
+  const list = document.getElementById('word-list');
+  list.innerHTML = '';
+  WORDS.filter(w => !q || w[0].includes(q) || w[1].toLowerCase().includes(q) || w[2].toLowerCase().includes(q))
+    .forEach(w => {
+      const isKnown = known.has(w[0]), isLearn = toLearn.has(w[0]);
+      const row = document.createElement('div');
+      row.className = 'word-row' + (isKnown ? ' known' : isLearn ? ' tolearn' : '');
+      row.innerHTML = `
+        <div class="w-char">${w[0]}</div>
+        <div class="w-pin">${w[1]}</div>
+        <div class="w-en">${w[2]}</div>
+        ${isKnown ? '<span class="w-badge known">Know</span>' : isLearn ? '<span class="w-badge tolearn">Review</span>' : ''}
+      `;
+      list.appendChild(row);
+    });
+}
+
+// keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (document.getElementById('list-mode').style.display !== 'none') return;
+  if (e.key === ' ' || e.key === 'f') { e.preventDefault(); flipCard(); }
+  if (e.key === 'ArrowRight') next();
+  if (e.key === 'ArrowLeft') prev();
+  if (flipped) {
+    if (e.key === '1') markLearn();
+    if (e.key === '2') markKnow();
+  }
+});
+
+loadState();
+buildDeck();
+showCard();
+</script>
