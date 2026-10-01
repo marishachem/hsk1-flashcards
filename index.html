@@ -285,7 +285,7 @@
           <div class="english" id="b-en"></div>
           <div id="b-stroke" style="margin-top:14px;width:100%;text-align:center;display:none;">
             <div style="font-size:.7rem;color:var(--fg2);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">✍️ Stroke order</div>
-            <img id="b-gif" src="" alt="stroke order" style="max-width:130px;border-radius:8px;border:1px solid var(--border);" onerror="document.getElementById('b-stroke').style.display='none'">
+            <div id="b-gifs" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;"></div>
           </div>
           <div id="b-sentence" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);width:100%;text-align:center;">
             <div id="b-sent-zh" style="font-family:'Noto Sans SC',sans-serif;font-size:1rem;font-weight:700;margin-bottom:4px;"></div>
@@ -733,14 +733,21 @@ function showCard() {
   document.getElementById('b-char').textContent = w[0];
   document.getElementById('b-pin').textContent = w[1];
   document.getElementById('b-en').textContent = w[2];
-  const gifUrl = GIFS[w[0]];
   const strokeEl = document.getElementById('b-stroke');
-  if (gifUrl) {
-    document.getElementById('b-gif').src = gifUrl;
-    strokeEl.style.display = '';
-  } else {
-    strokeEl.style.display = 'none';
-  }
+  const gifsEl = document.getElementById('b-gifs');
+  const gifUrls = getGifUrls(w[0]);
+  gifsEl.innerHTML = '';
+  let loaded = 0;
+  gifUrls.forEach(url => {
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = 'stroke order';
+    img.style.cssText = 'max-width:130px;border-radius:8px;border:1px solid var(--border);display:none;';
+    img.onload = () => { img.style.display = ''; };
+    img.onerror = () => { img.remove(); if (!gifsEl.children.length) strokeEl.style.display = 'none'; };
+    gifsEl.appendChild(img);
+  });
+  strokeEl.style.display = '';
 
   const s = SENTENCES[w[0]];
   if (s) {
@@ -844,6 +851,13 @@ document.addEventListener('keydown', e => {
     if (e.key === '2') markKnow();
   }
 });
+
+const WC_BASE = 'https://dictionary.writtenchinese.com/giffile.action?&localfile=true&fileName=';
+function getGifUrls(word) {
+  if (GIFS[word]) return [GIFS[word]];
+  // For words not in lingust.ru map: generate writtenchinese.com URL per character
+  return [...word].map(ch => WC_BASE + encodeURIComponent(ch) + '.gif');
+}
 
 // Speech
 let autoplay = true;
