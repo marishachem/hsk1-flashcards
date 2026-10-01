@@ -2,6 +2,8 @@
 
 A browser-based flashcard app to study all 150 HSK Level 1 Chinese vocabulary words.
 
+![App preview](preview.png)
+
 ## Features
 
 - **150 HSK 1 words** — Chinese characters, pinyin, English meaning, and an example sentence
