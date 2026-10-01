@@ -167,6 +167,35 @@
 
   .flip-hint { font-size: .75rem; color: var(--fg2); text-align: center; }
 
+  .sound-btn {
+    position: absolute; bottom: 14px; right: 16px;
+    background: var(--border); border: none; border-radius: 50%;
+    width: 36px; height: 36px; font-size: 1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s, transform .1s;
+  }
+  .sound-btn:hover { background: var(--accent); }
+  .sound-btn:active { transform: scale(.9); }
+  .sound-btn.playing { background: var(--accent); animation: pulse .4s ease; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
+
+  .autoplay-row {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: .78rem; color: var(--fg2);
+  }
+  .toggle {
+    width: 36px; height: 20px; background: var(--border); border-radius: 999px;
+    border: none; cursor: pointer; position: relative; transition: background .2s;
+    flex-shrink: 0;
+  }
+  .toggle::after {
+    content:''; position: absolute; top: 3px; left: 3px;
+    width: 14px; height: 14px; background: #fff; border-radius: 50%;
+    transition: left .2s;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle.on::after { left: 19px; }
+
   /* List mode */
   .word-list { display: flex; flex-direction: column; gap: 6px; }
   .word-row {
@@ -247,6 +276,7 @@
           <div class="card-tag" id="card-tag"></div>
           <div class="chinese" id="f-char"></div>
           <div class="pinyin" id="f-pin"></div>
+          <button class="sound-btn" id="sound-btn" onclick="event.stopPropagation(); speak()" title="Play pronunciation">🔊</button>
         </div>
         <div class="card-face card-back">
           <div class="card-hint">MEANING</div>
@@ -263,6 +293,10 @@
     </div>
 
     <div class="flip-hint" id="flip-hint">Tap the card to see the meaning</div>
+    <div class="autoplay-row">
+      <button class="toggle on" id="autoplay-toggle" onclick="toggleAutoplay()"></button>
+      <span>Auto-play pronunciation</span>
+    </div>
 
     <div class="actions" id="answer-btns" style="display:none;">
       <button class="btn btn-learn" onclick="markLearn()">🔄 Review again</button>
@@ -590,6 +624,7 @@ function showCard() {
   document.getElementById('card-tag').textContent = tag;
 
   document.getElementById('prog-text').textContent = `${idx+1} / ${deck.length}`;
+  if (autoplay) setTimeout(() => speak(w[0]), 300);
   document.getElementById('prog-fill').style.width = `${((idx+1)/deck.length)*100}%`;
 
   const card = document.getElementById('card');
@@ -677,6 +712,36 @@ document.addEventListener('keydown', e => {
     if (e.key === '2') markKnow();
   }
 });
+
+// Speech
+let autoplay = true;
+let zhVoice = null;
+
+function loadVoice() {
+  const voices = speechSynthesis.getVoices();
+  zhVoice = voices.find(v => v.lang.startsWith('zh')) || null;
+}
+loadVoice();
+speechSynthesis.onvoiceschanged = loadVoice;
+
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  const word = text || deck[idx]?.[0];
+  if (!word) return;
+  speechSynthesis.cancel();
+  const btn = document.getElementById('sound-btn');
+  const utt = new SpeechSynthesisUtterance(word);
+  utt.lang = 'zh-CN';
+  utt.rate = 0.85;
+  if (zhVoice) utt.voice = zhVoice;
+  if (btn) { btn.classList.add('playing'); utt.onend = () => btn.classList.remove('playing'); }
+  speechSynthesis.speak(utt);
+}
+
+function toggleAutoplay() {
+  autoplay = !autoplay;
+  document.getElementById('autoplay-toggle').classList.toggle('on', autoplay);
+}
 
 loadState();
 buildDeck();
