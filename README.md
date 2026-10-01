@@ -2,7 +2,7 @@
 
 A browser-based flashcard app to study all 150 HSK Level 1 Chinese vocabulary words.
 
-![App preview](preview.png)
+![App demo](demo.gif)
 
 ## Features
 
