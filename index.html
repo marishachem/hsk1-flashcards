@@ -277,6 +277,17 @@
     <div class="score-card score-left"><div class="score-val" id="s-left">303</div><div class="score-label">📚 Left</div></div>
   </div>
 
+  <div id="reset-row" style="text-align:center;">
+    <button class="btn-undo" onclick="showResetConfirm()" style="font-size:.72rem;padding:5px 14px;">🗑 Reset progress</button>
+  </div>
+  <div id="reset-confirm" style="display:none;text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;">
+    <div style="font-size:.85rem;margin-bottom:10px;">Reset all progress? This cannot be undone.</div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <button class="btn-undo" onclick="cancelReset()" style="padding:6px 18px;">Cancel</button>
+      <button class="btn-undo" onclick="confirmReset()" style="padding:6px 18px;border-color:#ef4444;color:#ef4444;">Yes, reset</button>
+    </div>
+  </div>
+
   <!-- Card mode -->
   <div id="card-mode">
     <div class="progress-row">
@@ -1081,6 +1092,21 @@ function prev() {
 }
 
 function restart() {
+  buildDeck(); showCard();
+}
+
+function showResetConfirm() {
+  document.getElementById('reset-confirm').style.display = '';
+  document.getElementById('reset-row').style.display = 'none';
+}
+function cancelReset() {
+  document.getElementById('reset-confirm').style.display = 'none';
+  document.getElementById('reset-row').style.display = '';
+}
+function confirmReset() {
+  try { localStorage.removeItem('hsk1-known'); localStorage.removeItem('hsk1-learn'); } catch(e) {}
+  known = new Set(); toLearn = new Set();
+  cancelReset();
   buildDeck(); showCard();
 }
 
