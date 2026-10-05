@@ -274,13 +274,13 @@
   <div class="score-row">
     <div class="score-card score-know"><div class="score-val" id="s-know">0</div><div class="score-label">✅ Know</div></div>
     <div class="score-card score-learn"><div class="score-val" id="s-learn">0</div><div class="score-label">🔄 Review</div></div>
-    <div class="score-card score-left"><div class="score-val" id="s-left">150</div><div class="score-label">📚 Left</div></div>
+    <div class="score-card score-left"><div class="score-val" id="s-left">303</div><div class="score-label">📚 Left</div></div>
   </div>
 
   <!-- Card mode -->
   <div id="card-mode">
     <div class="progress-row">
-      <span id="prog-text">1 / 150</span>
+      <span id="prog-text">1 / 303</span>
       <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
     </div>
 
@@ -1071,7 +1071,7 @@ function next() {
     document.getElementById('flip-btns').style.display = 'none';
     document.getElementById('flip-hint').style.display = 'none';
     document.getElementById('finish-msg').textContent =
-      `You know ${known.size} / 150 words. ${known.size >= 150 ? '🏆 Perfect score!' : 'Keep practicing!'}`;
+      `You know ${known.size} / ${WORDS.length} words. ${known.size >= WORDS.length ? '🏆 Perfect score!' : 'Keep practicing!'}`;
   }
   updateScores();
 }
@@ -1087,7 +1087,7 @@ function restart() {
 function updateScores() {
   document.getElementById('s-know').textContent = known.size;
   document.getElementById('s-learn').textContent = toLearn.size;
-  document.getElementById('s-left').textContent = 150 - known.size - toLearn.size;
+  document.getElementById('s-left').textContent = WORDS.length - known.size - toLearn.size;
 }
 
 function renderList() {
