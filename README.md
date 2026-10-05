@@ -1,13 +1,13 @@
 # HSK 1 Flashcards
 
-A browser-based flashcard app to study all 150 HSK Level 1 Chinese vocabulary words.
+A browser-based flashcard app to study all New HSK 3.0 Level 1 Chinese vocabulary words (~300 words).
 
 ![App demo](demo.gif)
 
 ## Features
 
-- **150 HSK 1 words** — Chinese characters, pinyin, English meaning, and an example sentence
-- **Stroke order animations** — animated GIF showing how to write each character (all 150 words covered)
+- **~300 HSK 1 words** (New HSK 3.0 standard) — Chinese characters, pinyin, English meaning, and an example sentence
+- **Stroke order animations** — animated GIF showing how to write each character
 - **Pronunciation audio** — auto-plays the Chinese word when a new card appears; replay with 🔊
 - **Flip animation** — tap the card (or press `Space`) to reveal the answer
 - **Track progress** — mark each word as ✅ Know or 🔄 Review again
@@ -43,11 +43,15 @@ python3 -m http.server 8080
 ## Progress
 
 Progress is saved automatically in your browser's localStorage — no account needed.  
-To reset: open DevTools → Application → Local Storage → delete `hsk1-known` and `hsk1-learn`.
+To reset: open DevTools → Application → Local Storage → delete `hsk1-known` and `hsk1-learn`.  
+Or paste this in the browser console:
+```js
+localStorage.removeItem('hsk1-known'); localStorage.removeItem('hsk1-learn'); location.reload();
+```
 
 ## Sources
 
-- Vocabulary: [hsk.academy/en/hsk-1-vocabulary-list](https://hsk.academy/en/hsk-1-vocabulary-list)
+- Vocabulary: [New HSK 3.0 (2025)](https://github.com/krmanik/HSK-3.0) word list
 - Stroke order GIFs: [lingust.ru](https://lingust.ru/chinese/chinese-lessons) and [dictionary.writtenchinese.com](https://dictionary.writtenchinese.com)
 
 ## Tech
