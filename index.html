@@ -242,6 +242,28 @@
   }
   .list-search:focus { border-color: var(--accent); }
 
+  /* Settings bar */
+  .settings-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px;
+    font-size: .8rem;
+  }
+  .settings-label { color: var(--fg2); font-weight: 600; white-space: nowrap; }
+  .settings-slider {
+    flex: 1; accent-color: var(--accent); cursor: pointer; min-width: 0;
+  }
+  .settings-val {
+    font-weight: 700; color: var(--accent); min-width: 28px; text-align: right;
+  }
+
+  /* SRS interval badge on card */
+  .srs-badge {
+    position: absolute; top: 14px; left: 16px;
+    font-size: .65rem; font-weight: 700; padding: 2px 7px;
+    border-radius: 999px; background: var(--border); color: var(--fg2);
+  }
+
   /* Finish screen */
   .finish { text-align: center; padding: 40px 20px; }
   .finish-emoji { font-size: 4rem; }
@@ -272,9 +294,15 @@
   </div>
 
   <div class="score-row">
-    <div class="score-card score-know"><div class="score-val" id="s-know">0</div><div class="score-label">✅ Know</div></div>
-    <div class="score-card score-learn"><div class="score-val" id="s-learn">0</div><div class="score-label">🔄 Review</div></div>
-    <div class="score-card score-left"><div class="score-val" id="s-left">303</div><div class="score-label">📚 Left</div></div>
+    <div class="score-card score-know"><div class="score-val" id="s-mature">0</div><div class="score-label">🏆 Mature</div></div>
+    <div class="score-card score-learn"><div class="score-val" id="s-due">0</div><div class="score-label">📅 Due today</div></div>
+    <div class="score-card score-left"><div class="score-val" id="s-new">0/20</div><div class="score-label">🌱 New today</div></div>
+  </div>
+
+  <div class="settings-bar">
+    <span class="settings-label">Daily new words</span>
+    <input type="range" class="settings-slider" id="limit-slider" min="5" max="50" step="5" value="20" oninput="setLimit(this.value)">
+    <span class="settings-val" id="limit-val">20</span>
   </div>
 
   <div id="reset-row" style="text-align:center;">
@@ -300,6 +328,7 @@
         <div class="card-face card-front">
           <div class="card-hint">TAP TO REVEAL</div>
           <div class="card-tag" id="card-tag"></div>
+          <div class="srs-badge" id="srs-badge"></div>
           <div class="chinese" id="f-char"></div>
           <div class="pinyin" id="f-pin"></div>
           <button class="sound-btn" id="sound-btn" onclick="event.stopPropagation(); speak()" title="Play pronunciation">🔊</button>
@@ -920,7 +949,22 @@ const GIFS = {
 let deck = [], idx = 0, flipped = false;
 let known = new Set(), toLearn = new Set();
 let mode = 'all';
-let lastAction = null; // { word, wasKnown, wasLearn, idx }
+let lastAction = null;
+let srs = {};         // word → { reps, interval, due }
+let dailyLimit = 20;
+let newToday = 0;     // new words seen today
+
+// SRS intervals (days) by repetition count
+const SRS_INTERVALS = [1, 3, 7, 14, 30, 60, 120];
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
 
 function loadState() {
   try {
@@ -928,6 +972,15 @@ function loadState() {
     const l = localStorage.getItem('hsk1-learn');
     if (k) known = new Set(JSON.parse(k));
     if (l) toLearn = new Set(JSON.parse(l));
+    const s = localStorage.getItem('hsk1-srs');
+    srs = s ? JSON.parse(s) : {};
+    // Migrate: old known words → SRS with interval 7 if not yet tracked
+    known.forEach(w => { if (!srs[w]) srs[w] = { reps: 2, interval: 7, due: todayStr() }; });
+    const lim = localStorage.getItem('hsk1-limit');
+    if (lim) { dailyLimit = parseInt(lim); document.getElementById('limit-slider').value = dailyLimit; document.getElementById('limit-val').textContent = dailyLimit; }
+    const daily = localStorage.getItem('hsk1-daily');
+    const d = daily ? JSON.parse(daily) : {};
+    newToday = d.date === todayStr() ? (d.count || 0) : 0;
   } catch(e) {}
 }
 
@@ -935,7 +988,17 @@ function saveState() {
   try {
     localStorage.setItem('hsk1-known', JSON.stringify([...known]));
     localStorage.setItem('hsk1-learn', JSON.stringify([...toLearn]));
+    localStorage.setItem('hsk1-srs', JSON.stringify(srs));
+    localStorage.setItem('hsk1-limit', dailyLimit);
+    localStorage.setItem('hsk1-daily', JSON.stringify({ date: todayStr(), count: newToday }));
   } catch(e) {}
+}
+
+function setLimit(val) {
+  dailyLimit = parseInt(val);
+  document.getElementById('limit-val').textContent = val;
+  saveState();
+  updateScores();
 }
 
 function shuffle(arr) {
@@ -948,10 +1011,14 @@ function shuffle(arr) {
 }
 
 function buildDeck() {
+  const t = todayStr();
   if (mode === 'learn') {
     deck = shuffle(WORDS.filter(w => toLearn.has(w[0])));
   } else {
-    deck = shuffle([...WORDS]);
+    const due   = WORDS.filter(w => srs[w[0]] && srs[w[0]].due <= t);
+    const remaining = Math.max(0, dailyLimit - newToday);
+    const newWords  = WORDS.filter(w => !srs[w[0]]).slice(0, remaining);
+    deck = shuffle([...due, ...newWords]);
   }
   idx = 0;
 }
@@ -1025,6 +1092,15 @@ function showCard() {
 
   const tag = known.has(w[0]) ? '✅' : toLearn.has(w[0]) ? '🔄' : '';
   document.getElementById('card-tag').textContent = tag;
+  const sr = srs[w[0]];
+  const badge = document.getElementById('srs-badge');
+  if (sr) {
+    const days = sr.interval;
+    badge.textContent = days >= 30 ? '🏆 ' + days + 'd' : days >= 7 ? '📅 ' + days + 'd' : '🔁 ' + days + 'd';
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
 
   document.getElementById('prog-text').textContent = `${idx+1} / ${deck.length}`;
   if (autoplay) setTimeout(() => speak(w[0]), 300);
@@ -1047,25 +1123,36 @@ function flipCard() {
 
 function markKnow() {
   const w = deck[idx][0];
-  lastAction = { word: w, wasKnown: known.has(w), wasLearn: toLearn.has(w), idx };
+  const isNew = !srs[w];
+  lastAction = { word: w, wasKnown: known.has(w), wasLearn: toLearn.has(w), prevSrs: srs[w] ? {...srs[w]} : null, wasNew: isNew, idx };
+  const prev = srs[w] || { reps: 0 };
+  const reps = prev.reps + 1;
+  const interval = SRS_INTERVALS[Math.min(reps - 1, SRS_INTERVALS.length - 1)];
+  srs[w] = { reps, interval, due: addDays(todayStr(), interval) };
   known.add(w); toLearn.delete(w);
+  if (isNew) newToday++;
   saveState(); next();
   document.getElementById('undo-row').style.display = '';
 }
 
 function markLearn() {
   const w = deck[idx][0];
-  lastAction = { word: w, wasKnown: known.has(w), wasLearn: toLearn.has(w), idx };
-  toLearn.add(w);
+  const isNew = !srs[w];
+  lastAction = { word: w, wasKnown: known.has(w), wasLearn: toLearn.has(w), prevSrs: srs[w] ? {...srs[w]} : null, wasNew: isNew, idx };
+  srs[w] = { reps: 0, interval: 1, due: addDays(todayStr(), 1) };
+  toLearn.add(w); known.delete(w);
+  if (isNew) newToday++;
   saveState(); next();
   document.getElementById('undo-row').style.display = '';
 }
 
 function undoLast() {
   if (!lastAction) return;
-  const { word, wasKnown, wasLearn, idx: prevIdx } = lastAction;
+  const { word, wasKnown, wasLearn, prevSrs, wasNew, idx: prevIdx } = lastAction;
   if (wasKnown) known.add(word); else known.delete(word);
   if (wasLearn) toLearn.add(word); else toLearn.delete(word);
+  if (prevSrs) srs[word] = prevSrs; else delete srs[word];
+  if (wasNew) newToday = Math.max(0, newToday - 1);
   saveState();
   idx = prevIdx;
   lastAction = null;
@@ -1104,16 +1191,22 @@ function cancelReset() {
   document.getElementById('reset-row').style.display = '';
 }
 function confirmReset() {
-  try { localStorage.removeItem('hsk1-known'); localStorage.removeItem('hsk1-learn'); } catch(e) {}
-  known = new Set(); toLearn = new Set();
+  try {
+    localStorage.removeItem('hsk1-known'); localStorage.removeItem('hsk1-learn');
+    localStorage.removeItem('hsk1-srs'); localStorage.removeItem('hsk1-daily');
+  } catch(e) {}
+  known = new Set(); toLearn = new Set(); srs = {}; newToday = 0;
   cancelReset();
   buildDeck(); showCard();
 }
 
 function updateScores() {
-  document.getElementById('s-know').textContent = known.size;
-  document.getElementById('s-learn').textContent = toLearn.size;
-  document.getElementById('s-left').textContent = WORDS.length - known.size - toLearn.size;
+  const t = todayStr();
+  const mature = Object.values(srs).filter(v => v.interval >= 7).length;
+  const due    = WORDS.filter(w => srs[w[0]] && srs[w[0]].due <= t).length;
+  document.getElementById('s-mature').textContent = mature;
+  document.getElementById('s-due').textContent = due;
+  document.getElementById('s-new').textContent = newToday + '/' + dailyLimit;
 }
 
 function renderList() {
